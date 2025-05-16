@@ -13,12 +13,11 @@ def _load_json_for_test_module(relative_path):
         with open(full_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        # Fallback for CI if files are at root during checkout for some reason
-        alt_full_path = os.path.join(project_root, os.path.basename(relative_path))
+        alt_full_path = os.path.join(project_root, os.path.basename(relative_path)) # Check if at root
         if os.path.exists(alt_full_path):
-            with open(alt_full_path, 'r', encoding='utf-8') as f:
+             with open(alt_full_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        pytest.fail(f"Failed to load golden query JSON for parametrize: {full_path} or {alt_full_path} not found.", pytrace=False)
+        pytest.fail(f"Failed to load golden query JSON: {full_path} or {alt_full_path} not found.", pytrace=False)
     except Exception as e:
         pytest.fail(f"Failed to load/parse golden query JSON {full_path}. Error: {e}", pytrace=False)
     return []
@@ -38,47 +37,53 @@ def test_sql_pipeline_from_json_with_latency_check(golden_query_data, langgraph_
     llm_call_log = []
 
     def mock_llm_router_sql(prompt: str, model: str, json_mode: bool = False, **kwargs):
-        # print(f"\nDEBUG SQL MOCK LLM ROUTER. Prompt starts with: {prompt[:200]}\n")
-        
-        # Check for CI-specific dummy prompt first, then for actual prompt content.
+        # print(f"\nDEBUG SQL MOCK LLM ROUTER. Prompt Content:\n{prompt}\nEND PROMPT\n") # Full prompt for debug
+
         # --- INTENT PARSER ---
-        if ("CI Intent Prompt:" in prompt and "{user_query}" in prompt and "{structure_json}" in prompt) or \
-           ("classifying user intent" in prompt and "## User Query:" in prompt):
+        # Real prompt check
+        is_real_intent_prompt = "classifying user intent" in prompt and "## User Query:" in prompt
+        # CI dummy prompt check (after {user_query} and {structure_json} are replaced)
+        is_ci_intent_prompt = "CI Intent Prompt:" in prompt and user_query in prompt # Check if original query is embedded
+
+        if is_real_intent_prompt or is_ci_intent_prompt:
             llm_call_log.append("intent_parser_triggered")
-            # Determine mocked intent based on the current user_query for this test case
-            if "status of order" in user_query.lower() or "order #" in user_query.lower():
-                order_id_match = user_query.split("#")[-1].split("?")[0].strip().split(" ")[0]
+            # Mocked intent logic (needs to be robust for both real and dummy queries)
+            if "status of order" in user_query.lower() or \
+               ("order #" in user_query.lower() and "email of the customer" not in user_query.lower()): # Avoid conflict
+                order_id_match = user_query.split("#")[-1].split("?")[0].strip().split(" ")[0] if "#" in user_query else "dummy_id"
                 return json.dumps({"intent": "ORDER_STATUS", "entities": {"order_id": order_id_match}})
             elif "nike air max" in user_query.lower() or "in stock" in user_query.lower():
                  return json.dumps({"intent": "PRODUCT_AVAILABILITY", "entities": {"product_name": "Nike Air Max"}})
             elif "email of the customer" in user_query.lower() and "order #" in user_query.lower():
                  parts = user_query.split("#")
-                 order_id_match = "UNKNOWN_ORDER_ID"
-                 if len(parts) > 1: order_id_match = parts[1].split("?")[0].strip().split(" ")[0]
-                 return json.dumps({"intent": "SQL_QUERY_GENERAL", "entities": {"order_id": order_id_match}})
-            # Default intent for SQL queries if not matched above (including dummy CI query)
+                 order_id_match = parts[1].split("?")[0].strip().split(" ")[0] if len(parts) > 1 else "dummy_order_id_for_email_query"
+                 return json.dumps({"intent": "SQL_QUERY_GENERAL", "entities": {"order_id": order_id_match}}) # Example
+            # Default for other SQL golden queries or the CI dummy SQL query
             return json.dumps({"intent": "SQL_QUERY_GENERAL", "entities": {}})
 
         # --- SQL GENERATOR ---
-        elif ("CI SQL Prompt:" in prompt and "{db_schema}" in prompt and "{user_query}" in prompt) or \
-             ("translates natural language questions" in prompt and "into SQLite SELECT queries" in prompt and "## Database Schema" in prompt):
+        is_real_sql_prompt = "translates natural language questions" in prompt and "into SQLite SELECT queries" in prompt and "## Database Schema" in prompt
+        is_ci_sql_prompt = "CI SQL Prompt:" in prompt and "{db_schema}" not in prompt # Placeholder replaced
+
+        if is_real_sql_prompt or is_ci_sql_prompt:
             llm_call_log.append("sql_generator_triggered")
             return expected_sql
 
         # --- RESPONSE SYNTHESIZER ---
-        elif ("CI Response Prompt:" in prompt and "{information}" in prompt and "{user_query}" in prompt) or \
-             ("friendly and professional AI customer support assistant" in prompt and "Information Found by the System:" in prompt):
+        is_real_response_prompt = "friendly and professional AI customer support assistant" in prompt and "Information Found by the System:" in prompt
+        is_ci_response_prompt = "CI Response Prompt:" in prompt and "{information}" not in prompt # Placeholder replaced
+
+        if is_real_response_prompt or is_ci_response_prompt:
             llm_call_log.append("response_synthesizer_triggered")
             try:
                 results_data = json.loads(expected_result_str)
                 return f"Mocked final response based on SQL. Data: {results_data}."
-            except: # Fallback if expected_result_str is not valid JSON for some reason
+            except:
                 return f"Mocked final response for query: {user_query}"
         
-        llm_call_log.append(f"fallback_triggered_sql: {prompt[:100]}")
+        llm_call_log.append(f"fallback_triggered_sql: {prompt[:150]}")
         return "Fallback: UNMATCHED PROMPT in SQL mock_llm_router"
 
-    # Patch get_llm_response in each module where it's imported and used by the nodes in this pipeline
     mocker.patch('agents.intent_parser_node.get_llm_response', side_effect=mock_llm_router_sql)
     mocker.patch('agents.sql_node.get_llm_response', side_effect=mock_llm_router_sql)
     mocker.patch('agents.response_node.get_llm_response', side_effect=mock_llm_router_sql)
@@ -88,7 +93,7 @@ def test_sql_pipeline_from_json_with_latency_check(golden_query_data, langgraph_
     
     final_state = langgraph_app.invoke(current_initial_state)
 
-    # Assertions
+    # Assertions (with more debug info in f-strings)
     generated_sql = final_state.get("sql_query_generated")
     generated_results_from_db = final_state.get("sql_query_result")
 
@@ -112,7 +117,7 @@ def test_sql_pipeline_from_json_with_latency_check(golden_query_data, langgraph_
         is_sql_result_correct, _ = compare_sql_results(generated_results_from_db, expected_result_str)
         assert is_sql_result_correct, \
             f"Actual SQL result from DB did not match expected. Query: '{user_query}'.\n" \
-            f"Expected (from JSON): '{expected_result_str}'\nGot (from DB execution of '{generated_sql}'): '{json.dumps(generated_results_from_db)}'"
+            f"Expected (from JSON): '{expected_result_str}'\nGot (from DB): '{json.dumps(generated_results_from_db)}'"
         
         assert "response_synthesizer_triggered" in llm_call_log, \
             f"Response synthesizer LLM mock not triggered for SQL query '{user_query}'. Log: {llm_call_log}"
@@ -121,11 +126,11 @@ def test_sql_pipeline_from_json_with_latency_check(golden_query_data, langgraph_
     
     if mocked_intent in sql_related_intents:
         assert final_state.get("error_message") is None, \
-            f"Pipeline produced an error for query '{user_query}' with intent '{mocked_intent}': {final_state.get('error_message')}. LLM Log: {llm_call_log}"
+            f"Pipeline error for query '{user_query}', intent '{mocked_intent}': {final_state.get('error_message')}. Log: {llm_call_log}"
 
     node_latencies = final_state.get("node_latencies")
     node_execution_order = final_state.get("node_execution_order")
-    assert node_latencies, "Node latencies dictionary is empty or missing."
+    assert node_latencies, "Node latencies dictionary is empty."
     assert node_execution_order, "Node execution order list is empty."
 
     expected_nodes_in_path = ["intent_parser"]
@@ -133,6 +138,6 @@ def test_sql_pipeline_from_json_with_latency_check(golden_query_data, langgraph_
         expected_nodes_in_path.extend(["sql_processor", "response_synthesizer"])
     
     for node_name in expected_nodes_in_path:
-        assert node_name in node_execution_order, f"'{node_name}' not in execution order for query '{user_query}'. Order: {node_execution_order}"
-        assert node_name in node_latencies, f"Latency for '{node_name}' missing for query '{user_query}'. Latencies: {node_latencies}"
+        assert node_name in node_execution_order, f"'{node_name}' not in execution order {node_execution_order} for '{user_query}'"
+        assert node_name in node_latencies, f"Latency for '{node_name}' missing for '{user_query}'. Latencies: {node_latencies}"
         assert isinstance(node_latencies[node_name], float) and node_latencies[node_name] >= 0
