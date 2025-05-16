@@ -1,0 +1,32 @@
+[
+  {
+    "query": "Where is my order #1002?",
+    "expected_result": "[{\"status\": \"Shipped\"}]",
+    "actual_response": "Your order #1002 has been shipped.",
+    "match": true
+  },
+  {
+    "query": "What is the email of the customer who placed order #1003?",
+    "expected_result": "[{\"email\": \"john@example.com\"}]",
+    "actual_response": "The email of the customer who placed order #1003 is john@example.com.",
+    "match": true
+  },
+  {
+    "query": "Do you have Nike Air Max in stock?",
+    "expected_result": "[{\"inventory_count\": 12}]",
+    "actual_response": "Yes, we have the Nike Air Max in stock. There are currently 12 units available, and the price is $129.99.",
+    "match": true
+  },
+  {
+    "query": "Which orders were returned and why?",
+    "expected_result": "[{\"id\": 1005, \"reason\": \"Item damaged\"},{\"id\": 1007, \"reason\": \"Wrong size\"},{\"id\": 1011, \"reason\": \"Wrong item sent\"},{\"id\": 12345, \"reason\": \"Damaged item\"}]",
+    "actual_response": "The following orders were returned along with their reasons:\n\n- Order ID 12345: Damaged item\n- Order ID 1005: Item damaged\n- Order ID 1007: Wrong size\n- Order ID 1011: Wrong item sent",
+    "match": true
+  },
+  {
+    "query": "What\u2019s the most recent order placed by Alice Smith?",
+    "expected_result": "[{\"id\": 1010, \"order_date\": \"2024-12-01\"}]",
+    "actual_response": "The most recent order placed by Alice Smith was order ID 1010, which was delivered on December 1, 2024.",
+    "match": true
+  }
+]

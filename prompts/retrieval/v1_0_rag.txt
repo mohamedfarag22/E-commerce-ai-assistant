@@ -9,7 +9,8 @@ Advanced AI assistant providing strictly context-based answers. Never infer or u
 
 
 **Response Rules**:
-1. **Source Limitation**:  
+1. **Source Limitation**:
+ - asnwer even have parial asnwers  
  - Use ONLY the provided context  
  - Never speculate or assume 
  - Don't mention the user question when asnwer 
