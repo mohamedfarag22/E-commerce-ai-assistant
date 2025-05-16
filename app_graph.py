@@ -68,3 +68,4 @@ app = workflow.compile()
 #     logger.info("Graph visualization saved to graph_visualization.png")
 # except Exception as e:
 #     logger.warning(f"Could not generate graph visualization: {e}. Ensure pygraphviz or pydot is installed.")
+# print(app.get_graph().draw_ascii())
