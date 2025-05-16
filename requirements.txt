@@ -7,9 +7,10 @@ faiss-cpu
 numpy
 PyYAML
 ipython
+openai
 pytest
 pytest-mock
 flake8
-sqlite3
-openai
 jsonschema
+pytest-cov 
+coverage 
