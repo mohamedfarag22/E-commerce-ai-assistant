@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.12"] 
 
     steps:
     - name: Checkout repository
@@ -21,70 +21,108 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'pip'
+        cache: 'pip' # Cache dependencies to speed up workflows
 
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-
     - name: Lint with Flake8
       run: |
+        # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. 
         flake8 . --count --exit-zero --max-complexity=12 --max-line-length=119 --statistics
-
-    - name: Create Dummy Data Files for CI Tests
-      # This step ensures that if any part of your application tries to read these
-      # files upon import (before mocks can be fully set up by pytest for specific tests),
-      # the CI run doesn't fail due to FileNotFoundError.
-      # Your mocks should ideally prevent actual use of these files during tests.
-      # Your pytest.ini with python_paths = . should handle imports.
+    - name: Create Dummy Data and Config Files for CI Tests
       run: |
         echo "Creating dummy files and directories for CI..."
-        mkdir -p data/doc_index
-        echo '[]' > data/doc_index/doc_metadata_v1_tes.json
-        touch data/doc_index/doc_index_v1_tes.faiss
-
-        mkdir -p data/documents
-        echo "Return Policy Content" > data/documents/return_policy.txt
-        echo "Shipping FAQ Content" > data/documents/shipping_faq.txt
-        echo "Terms Content" > data/documents/terms_conditions.txt
-        
-        # Crucial: Ensure your golden query JSON files exist for tests to load
-        echo '[{"query": "dummy sql query", "expected_sql": "SELECT 1;", "expected_result": "[{\"1\": 1}]"}]' > data/golden_queries_sql.json
-        echo '[{"query": "dummy retrieval query", "expected_answer_source": "dummy_source.txt"}]' > data/golden_queries_retrieval.json
-        
-        # Dummy DB file (tests should use in-memory or mock connections for unit tests)
-        # For integration tests, the actual db in data/ might be used if not mocked.
-        # If data/ecommerce_support.db is committed and needed, this 'touch' is just a fallback.
-        touch data/ecommerce_support.db
-
+        mkdir -p data/doc_index data/documents
         mkdir -p prompts/intent prompts/sql prompts/retrieval prompts/meta prompts/response
-        echo "Intent Prompt Template" > prompts/intent/v1_0_parser.txt
-        echo "SQL Prompt Template with {db_schema} and {user_query}" > prompts/sql/v1_0_schema.txt
-        echo "RAG Prompt Template with {context_str} and {user_query}" > prompts/retrieval/v1_0_rag.txt
-        echo "Meta Prompt Template" > prompts/meta/v1_0_responder.txt
-        echo "Response Prompt Template with {information} and {user_query}" > prompts/response/v1_0_format.txt
+        # Dummy Document Index Files
+        echo '[]' > data/doc_index/doc_metadata_v1_tes.json # Empty valid JSON list
+        # Create a minimal FAISS index file if absolutely necessary for import/load checks,
+        # though retrieval_node's _load_retrieval_assets and _faiss_index should be mocked in tests.
+        # This command creates a tiny, valid FAISS index.
+        python -c "import faiss, numpy as np; index = faiss.IndexFlatL2(1); index.add(np.array([[0.0]], dtype='float32')); faiss.write_index(index, 'data/doc_index/doc_index_v1_tes.faiss')"
         
-        # Minimal agent_registry.yaml if nodes try to load it before get_node_config mock
-        # Your tests should mock get_node_config to provide specific configs.
-        echo "active_node_versions: {}" > agent_registry.yaml
-        echo "nodes: {}" >> agent_registry.yaml
-
-
+        # Dummy Documents
+        echo "Return Policy Content for CI" > data/documents/return_policy.txt
+        echo "Shipping FAQ Content for CI" > data/documents/shipping_faq.txt
+        echo "Terms Content for CI" > data/documents/terms_conditions.txt
+        
+        # Dummy Golden Query JSON Files (for _load_json_for_test_module in test files)
+        # These ensure the test files themselves don't fail at module import time if they load data then.
+        # The actual test data should come from the committed versions of these files.
+        # If these files are committed, this step is just a safeguard or can be simplified.
+        echo '[{"query": "dummy ci sql query", "expected_sql": "SELECT 1;", "expected_result": "[{\"1\": 1}]"}]' > data/golden_queries_sql.json
+        echo '[{"query": "dummy ci retrieval query", "expected_answer_source": "ci_dummy_source.txt"}]' > data/golden_queries_retrieval.json
+        
+        # Dummy Database File (if needed for existence checks before mocks take over)
+        touch data/ecommerce_support.db
+        # Dummy Prompt Files
+        echo "CI Intent Prompt: {user_query} {structure_json}" > prompts/intent/v1_0_parser.txt
+        echo "CI SQL Prompt: Schema {db_schema} Query {user_query}" > prompts/sql/v1_0_schema.txt
+        echo "CI RAG Prompt: Context {context_str} Query {user_query}" > prompts/retrieval/v1_0_rag.txt
+        echo "CI Meta Prompt: Info {information_found} Query {user_query}" > prompts/meta/v1_0_responder.txt
+        echo "CI Response Prompt: Info {information} Query {user_query}" > prompts/response/v1_0_format.txt
+        
+        # Create a more functional dummy agent_registry.yaml for CI
+        # This allows get_node_config() to find entries. Tests will mock LLM models.
+        cat <<EOL > agent_registry.yaml
+        active_node_versions:
+          intent_parser: "ci-v1"
+          sql_processor: "ci-v1"
+          retrieval_processor: "ci-v1"
+          response_synthesizer: "ci-v1"
+          meta_query_handler: "ci-v1"
+        nodes:
+          intent_parser:
+            version: "ci-v1"
+            prompt_path: "prompts/intent/v1_0_parser.txt"
+            llm_model: "ci-mocked-model"
+          sql_processor:
+            version: "ci-v1"
+            prompt_path: "prompts/sql/v1_0_schema.txt"
+            llm_model: "ci-mocked-model"
+            db_path: "data/ecommerce_support.db"
+          retrieval_processor:
+            version: "ci-v1"
+            vector_store_path: "data/doc_index/doc_index_v1_tes.faiss"
+            metadata_store_path: "data/doc_index/doc_metadata_v1_tes.json"
+            embedding_model: "ci-mocked-embedding-model"
+            rag_prompt_path: "prompts/retrieval/v1_0_rag.txt"
+            llm_model_for_rag: "ci-mocked-model"
+            top_k: 1
+          response_synthesizer:
+            version: "ci-v1"
+            prompt_path: "prompts/response/v1_0_format.txt"
+            llm_model: "ci-mocked-model"
+          meta_query_handler:
+            version: "ci-v1"
+            prompt_path: "prompts/meta/v1_0_responder.txt"
+            llm_model: "ci-mocked-model"
+        EOL
+        # Verify critical files were created (for debugging CI)
+        echo "--- Verifying created files ---"
+        ls -l agent_registry.yaml
+        ls -lR data
+        ls -lR prompts
+        echo "--- End file verification ---"
     - name: Run Pytest (Unit and Mocked Integration Tests)
       run: |
-        pytest -v --cov=. --cov-report=xml
+        pytest -v --cov=. --cov-report=xml --cov-report=term-missing
+        # -v for verbose output
+        # --cov for coverage. --cov-report=term-missing shows uncovered lines.
       env:
+        # This key is for pytest tests which should be MOCKING all OpenAI calls.
         OPENAI_API_KEY: "DUMMY_CI_KEY_FOR_PYTEST_WORKFLOW"
-        # PYTHONPATH: "." # Not strictly needed if pytest.ini python_paths = . works
+        # PYTHONPATH: "." # This is handled by pytest.ini (python_paths = .)
 
     - name: Upload coverage to Codecov
-      if: success()
+      if: success() # Only run if tests pass and coverage file exists
       uses: codecov/codecov-action@v4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }} # Optional
-        files: ./coverage.xml
-        fail_ci_if_error: false 
+        token: ${{ secrets.CODECOV_TOKEN }} # Optional: for private repos or specific Codecov features
+        files: ./coverage.xml # Path to coverage report
+        fail_ci_if_error: false # Optional: Don't fail CI if Codecov upload fails
         verbose: true

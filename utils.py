@@ -36,6 +36,19 @@ _agent_registry_cache = None
 def load_agent_registry(force_reload=False):
     """Loads the agent registry YAML file with caching."""
     global _agent_registry_cache
+        # CI DEBUG
+    print(f"[DEBUG utils.py] load_agent_registry called. force_reload={force_reload}. Cache is None: {_agent_registry_cache is None}")
+    # Check if file exists
+    if os.path.exists(AGENT_REGISTRY_PATH):
+        print(f"[DEBUG utils.py] {AGENT_REGISTRY_PATH} exists. Content peek:")
+        try:
+            with open(AGENT_REGISTRY_PATH, 'r') as f_peek:
+                print(f_peek.read(200)) # Print first 200 chars
+        except Exception as e_peek:
+            print(f"[DEBUG utils.py] Error peeking content: {e_peek}")
+    else:
+        print(f"[DEBUG utils.py] {AGENT_REGISTRY_PATH} DOES NOT EXIST.")
+    # END CI DEBUG
     if _agent_registry_cache is None or force_reload:
         try:
             with open(AGENT_REGISTRY_PATH, 'r') as f:
