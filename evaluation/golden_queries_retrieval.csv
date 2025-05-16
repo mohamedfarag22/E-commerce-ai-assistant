@@ -1,0 +1,6 @@
+query,expected_answer_source,notes
+How do I return a damaged item?,return_policy.txt,Should return passage mentioning damage returns or steps to return
+What if my package arrives late?,shipping_faq.txt,Look for policy on delayed shipments
+Can I cancel an order after payment?,return_policy.txt / sample_conversations.md,Policy or a sample support interaction
+How long does a refund take?,return_policy.txt,Should mention refund processing time
+What happens if I receive the wrong item?,return_policy.txt,Wrong item policy section

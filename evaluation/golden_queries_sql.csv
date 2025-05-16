@@ -1,0 +1,8 @@
+query,expected_sql,expected_result,,,,,,
+Where is my order #1002?,SELECT status FROM Orders WHERE id = 1002;,Shipped,,,,,,
+What is the email of the customer who placed order #1003?,SELECT email FROM Customers WHERE id = (SELECT customer_id FROM Orders WHERE id = 1003);,john@example.com,,,,,,
+Do you have Nike Air Max in stock?,SELECT inventory_count FROM Products WHERE name LIKE '%Nike Air Max%';,12,,,,,,
+Which orders were returned and why?,"SELECT Orders.id, Returns.reason FROM Orders JOIN Returns ON Orders.id = Returns.order_id;","[(1005, 'Item damaged'), (1007, 'Wrong size')]",,,,,,
+What’s the most recent order placed by Alice Smith?,"SELECT id, order_date FROM Orders WHERE customer_id = (SELECT id FROM Customers WHERE name = 'Alice Smith') ORDER BY order_date DESC LIMIT 1;","(1010, '2024-12-01')",,,,,,"SELECT o.id, o.order_date FROM Orders o JOIN Customers c ON o.customer_id = c.id WHERE c.name = 'Alice Smith' ORDER BY o.order_date DESC LIMIT 1;"
+,,,,,,,,
+,,,,,,,,

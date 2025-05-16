@@ -1,0 +1,50 @@
+[
+    {
+        "id": 0,
+        "source": "return_policy.txt",
+        "chunk_index_in_doc": 0,
+        "text": "Return Policy\n\nDamaged or Defective Items\nIf you receive a product that is damaged or defective, you are eligible to return it within 30 days of delivery. Upon inspection, you may choose to receive either a full refund or a replacement item at no additional cost.\n\nReturn Conditions\n\nItems must be returned in their original packaging and include all accessories, manuals, and any promotional materials (if applicable).\n\nA proof of purchase\u2014such as an order confirmation email or receipt\u2014is required to process all returns"
+    },
+    {
+        "id": 1,
+        "source": "return_policy.txt",
+        "chunk_index_in_doc": 1,
+        "text": " promotional materials (if applicable).\n\nA proof of purchase\u2014such as an order confirmation email or receipt\u2014is required to process all returns.\n\nReturn Process\nTo initiate a return, please contact our customer support team with your order number and a description of the issue. We will provide instructions and a return shipping label if the return is approved.\n\n"
+    },
+    {
+        "id": 2,
+        "source": "shipping_faq.txt",
+        "chunk_index_in_doc": 0,
+        "text": "Shipping FAQ\n\nWhat is the delivery time for standard shipping?\nStandard shipping typically takes 5 to 7 business days from the date your order is processed and shipped. Delivery times may vary depending on your location and the shipping carrier\u2019s service schedule.\n\nHow fast is expedited shipping?\nExpedited shipping is available for customers who need faster delivery. This option usually ensures your package arrives within 2 to 3 business days after the order has been processed. Additional charges may apply.\n\nWill I receive tracking information?\n"
+    },
+    {
+        "id": 3,
+        "source": "shipping_faq.txt",
+        "chunk_index_in_doc": 1,
+        "text": " 2 to 3 business days after the order has been processed. Additional charges may apply.\n\nWill I receive tracking information?\nYes, once your order has been shipped, a shipping confirmation email will be sent to you. This email will include a tracking number and a direct link to track your shipment through the carrier\u2019s website. Please allow up to 24 hours for the tracking information to become active."
+    },
+    {
+        "id": 4,
+        "source": "terms_conditions.txt",
+        "chunk_index_in_doc": 0,
+        "text": "Terms and Conditions\nBy using this online store, you agree to comply with and be bound by the following terms and conditions. Please review them carefully before making a purchase.\n\nAcceptance of Terms\nAccessing, browsing, or placing an order through this site constitutes your agreement to these Terms and Conditions, as well as our Privacy Policy.\n\nIntellectual Property\nAll content on this site\u2014including but not limited to product descriptions, images, logos, and graphics\u2014is the property of the store owner and is protected by"
+    },
+    {
+        "id": 5,
+        "source": "terms_conditions.txt",
+        "chunk_index_in_doc": 1,
+        "text": "\u2014including but not limited to product descriptions, images, logos, and graphics\u2014is the property of the store owner and is protected by copyright and intellectual property laws. Reproduction or unauthorized use of any content is strictly prohibited.\n\nOrder Verification and Acceptance\nAll orders are subject to review and verification before being processed. We reserve the right to accept or decline any order for any reason, including but not limited to product availability, pricing errors, or concerns regarding fraud or unauthorized use.\n\nPricing and Availability\nPrices and availability"
+    },
+    {
+        "id": 6,
+        "source": "terms_conditions.txt",
+        "chunk_index_in_doc": 2,
+        "text": " but not limited to product availability, pricing errors, or concerns regarding fraud or unauthorized use.\n\nPricing and Availability\nPrices and availability of products are subject to change without notice. We strive for accuracy, but errors may occur. In such cases, we reserve the right to correct any errors and cancel or refuse orders placed under incorrect information.\n\nShipping and Fulfillment\nOrders will be shipped only after successful verification and acceptance. Shipping times may vary and are not guaranteed. We are not responsible for delays caused by carriers"
+    },
+    {
+        "id": 7,
+        "source": "terms_conditions.txt",
+        "chunk_index_in_doc": 3,
+        "text": " only after successful verification and acceptance. Shipping times may vary and are not guaranteed. We are not responsible for delays caused by carriers or circumstances beyond our control."
+    }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "query": "Where is my order #1002?",
+    "expected_sql": "SELECT status FROM Orders WHERE id = 1002;",
+    "expected_result": "[{\"status\": \"Shipped\"}]"
+  },
+  {
+    "query": "What is the email of the customer who placed order #1003?",
+    "expected_sql": "SELECT email FROM Customers WHERE id = (SELECT customer_id FROM Orders WHERE id = 1003);",
+    "expected_result": "[{\"email\": \"john@example.com\"}]"
+  },
+  {
+    "query": "Do you have Nike Air Max in stock?",
+    "expected_sql": "SELECT inventory_count FROM Products WHERE name LIKE '%Nike Air Max%';",
+    "expected_result": "[{\"inventory_count\": 12}]"
+  },
+  {
+    "query": "Which orders were returned and why?",
+    "expected_sql": "SELECT Orders.id, Returns.reason FROM Orders JOIN Returns ON Orders.id = Returns.order_id;",
+    "expected_result": "[{\"id\": 1005, \"reason\": \"Item damaged\"},{\"id\": 1007, \"reason\": \"Wrong size\"},{\"id\": 1011, \"reason\": \"Wrong item sent\"},{\"id\": 12345, \"reason\": \"Damaged item\"}]"
+  },
+  {
+    "query": "What’s the most recent order placed by Alice Smith?",
+    "expected_sql": "SELECT id, order_date FROM Orders WHERE customer_id = (SELECT id FROM Customers WHERE name = 'Alice Smith') ORDER BY order_date DESC LIMIT 1;",
+    "expected_result": "[{\"id\": 1010, \"order_date\": \"2024-12-01\"}]"
+  }
+]

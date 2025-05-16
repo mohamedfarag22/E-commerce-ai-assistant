@@ -1,0 +1,51 @@
+# agent_registry.yaml
+# Default LLM for most generative tasks if not specified in node
+default_llm_model: "gpt-4o"
+default_embedding_model: "text-embedding-3-small"
+
+nodes:
+  intent_parser:
+    version: "v1.0"
+    description: "Parses user query to determine intent and extract entities."
+    llm_model: "gpt-4o" # Can override default
+    prompt_path: "prompts/intent/v1_0_parser.txt"
+
+  sql_processor: # Renamed from 'sql' for clarity as a processing node
+    version: "v1.1"
+    description: "Generates and executes SQL queries."
+    llm_model: "gpt-4o"
+    prompt_path: "prompts/sql/v1_0_schema.txt"
+    db_path: "data/ecommerce_support.db"
+    fallback_to_version: "v1.0" # Future: could point to an older, stable config
+
+  retrieval_processor: # Renamed from 'retrieval'
+    version: "v1.0"
+    description: "Performs semantic search and RAG."
+    embedding_model: "text-embedding-3-small" # Specific to this node
+    vector_store_path: "data/doc_index/doc_index_v1_tes.faiss"
+    metadata_store_path: "data/doc_index/doc_metadata_v1_tes.json"
+    llm_model_for_rag: "gpt-4o"
+    rag_prompt_path: "prompts/retrieval/v1_0_rag.txt"
+    top_k: 3
+    similarity_threshold: 0.5 # Adjust based on embedding model performance
+
+  response_synthesizer: # Renamed from 'response'
+    version: "v1.0"
+    description: "Formats agent outputs for the user."
+    llm_model: "gpt-4o"
+    prompt_path: "prompts/response/v1_0_format.txt"
+
+  meta_query_handler:
+    version: "v1.0"
+    description: "Handles meta-queries about the assistant."
+    # This node might not use an LLM, or use one for formatting
+    llm_model: "gpt-4o" # Optional, for formatting if needed
+    prompt_path: "prompts/meta/v1_0_responder.txt" # For formatting the answer
+
+# This section is for the graph to know which version of a node to use by default
+active_node_versions:
+  intent_parser: "v1.0"
+  sql_processor: "v1.1"
+  retrieval_processor: "v1.0"
+  response_synthesizer: "v1.0"
+  meta_query_handler: "v1.0"

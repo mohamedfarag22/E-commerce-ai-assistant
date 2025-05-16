@@ -1,0 +1,15 @@
+python-dotenv
+langchain
+langchain-openai
+langchain-community
+langgraph
+faiss-cpu
+numpy
+PyYAML
+ipython
+pytest
+pytest-mock
+flake8
+sqlite3
+openai
+jsonschema

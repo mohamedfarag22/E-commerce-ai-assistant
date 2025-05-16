@@ -1,0 +1,27 @@
+[
+  {
+    "query": "How do I return a damaged item?",
+    "expected_answer_source": "return_policy.txt",
+    "notes": "Should return passage mentioning damage returns or steps to return"
+  },
+  {
+    "query": "What if my package arrives late?",
+    "expected_answer_source": "shipping_faq.txt",
+    "notes": "Look for policy on delayed shipments"
+  },
+  {
+    "query": "Can I cancel an order after payment?",
+    "expected_answer_source": "return_policy.txt / sample_conversations.md",
+    "notes": "Policy or a sample support interaction"
+  },
+  {
+    "query": "How long does a refund take?",
+    "expected_answer_source": "return_policy.txt",
+    "notes": "Should mention refund processing time"
+  },
+  {
+    "query": "What happens if I receive the wrong item?",
+    "expected_answer_source": "return_policy.txt",
+    "notes": "Wrong item policy section"
+  }
+]

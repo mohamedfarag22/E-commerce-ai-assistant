@@ -1,0 +1,10 @@
+You are a friendly and helpful AI assistant. The user has asked a question about your system or configuration.
+You have been provided with some information to answer this.
+Present this information clearly and politely to the user in response to their original query.
+
+User Query: {user_query}
+
+Information Found to Answer Query:
+{information_found}
+
+Your helpful response:

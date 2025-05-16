@@ -1,0 +1,7 @@
+evaluations:
+  - name: "Default Configuration - JSON Golden Queries"
+    description: "Evaluation run using the default active agent versions with JSON input."
+    sql_golden_queries_path: "data/golden_queries_sql.json"         # <<< Points to JSON
+    retrieval_golden_queries_path: "data/golden_queries_retrieval.json" # <<< Points to JSON
+
+output_report_path: "evaluation_report.md"
