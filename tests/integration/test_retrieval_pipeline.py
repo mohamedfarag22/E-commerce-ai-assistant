@@ -4,6 +4,7 @@ import os
 from graph_state import AgentState
 from run_evaluation import compare_retrieval_sources
 
+# --- Load JSON data directly at module level for parametrization ---
 def _load_json_for_test_module(relative_path):
     test_dir = os.path.dirname(__file__)
     project_root = os.path.abspath(os.path.join(test_dir, '..', '..'))
@@ -12,16 +13,18 @@ def _load_json_for_test_module(relative_path):
         with open(full_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
+        # Fallback for CI if files are at root during checkout for some reason
         alt_full_path = os.path.join(project_root, os.path.basename(relative_path))
         if os.path.exists(alt_full_path):
              with open(alt_full_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        pytest.fail(f"Failed to load golden query JSON: {full_path} or {alt_full_path} not found.", pytrace=False)
+        pytest.fail(f"Failed to load golden query JSON for parametrize: {full_path} or {alt_full_path} not found.", pytrace=False)
     except Exception as e:
         pytest.fail(f"Failed to load/parse golden query JSON {full_path}. Error: {e}", pytrace=False)
     return []
 
 RETRIEVAL_TEST_DATA = _load_json_for_test_module("data/golden_queries_retrieval.json")
+# --- End of data loading ---
 
 @pytest.mark.parametrize("golden_query_data", RETRIEVAL_TEST_DATA)
 def test_retrieval_pipeline_from_json_with_latency_check(golden_query_data, langgraph_app, mock_initial_state, mocker):
@@ -32,39 +35,63 @@ def test_retrieval_pipeline_from_json_with_latency_check(golden_query_data, lang
     expected_source_filename = golden_query_data["expected_answer_source"]
 
     llm_call_log = []
-    expected_rag_summary_content = f"Mocked RAG summary for '{user_query}' from {expected_source_filename}."
+    # This will be the expected output of the RAG summarizer LLM call
+    expected_rag_summary_content = f"Mocked RAG summary for '{user_query}' based on content from {expected_source_filename}."
 
     def mock_llm_router_retrieval(prompt: str, model: str, json_mode: bool = False, **kwargs):
-        # print(f"\nDEBUG RETRIEVAL MOCK LLM ROUTER. Prompt starts with: {prompt[:200]}\n")
+        # Uncomment for detailed prompt debugging if needed:
+        # print(f"\nDEBUG RETRIEVAL MOCK LLM ROUTER. json_mode={json_mode}. Prompt content:\n>>>\n{prompt}\n<<<\n")
         
         # --- INTENT PARSER ---
-        if ("CI Intent Prompt:" in prompt and user_query in prompt) or \
-           ("classifying user intent" in prompt and "## User Query:" in prompt):
+        # Check for real prompt structure first
+        if "classifying user intent" in prompt and "## User Query:" in prompt:
             llm_call_log.append("intent_parser_triggered")
-            intent_payload = {"intent": "PROBLEM_REPORT", "entities": {}} # Default
-            if "return" in user_query.lower() or "refund" in user_query.lower() or "wrong item" in user_query.lower() or "cancel" in user_query.lower() or ("dummy ci retrieval query" in user_query.lower() and "return" in expected_source_filename): # Make dummy CI query more specific
+            intent_payload = {"intent": "PROBLEM_REPORT", "entities": {}} # Default for retrieval queries
+            if "return" in user_query.lower() or "refund" in user_query.lower() or "wrong item" in user_query.lower() or "cancel" in user_query.lower():
                  intent_payload["intent"] = "RETURN_INFO"
-            elif "shipping" in user_query.lower() or "package arrives late" in user_query.lower() or ("dummy ci retrieval query" in user_query.lower() and "shipping" in expected_source_filename):
+            elif "shipping" in user_query.lower() or "package arrives late" in user_query.lower():
                  intent_payload["intent"] = "SHIPPING_INFO"
             return json.dumps(intent_payload)
-        
+        # Check for CI dummy intent prompt structure
+        elif "CI Intent Prompt:" in prompt and user_query in prompt:
+            llm_call_log.append("intent_parser_triggered") # CI dummy prompt matched
+            intent_payload = {"intent": "PROBLEM_REPORT", "entities": {}} # Default
+            # For CI dummy query, determine intent based on expected source or query itself
+            if "return_policy.txt" in expected_source_filename or "return" in user_query.lower():
+                intent_payload["intent"] = "RETURN_INFO"
+            elif "shipping_faq.txt" in expected_source_filename or "shipping" in user_query.lower():
+                intent_payload["intent"] = "SHIPPING_INFO"
+            return json.dumps(intent_payload)
+
         # --- RAG SUMMARIZER (within retrieval_node) ---
-        elif ("CI RAG Prompt:" in prompt and "{context_str}" in prompt) or \
-             ("Advanced AI assistant providing strictly context-based answers" in prompt and "**Inputs**:" in prompt):
+        # Check for the real prompt structure (from prompts/retrieval/v1_0_rag.txt)
+        elif ("Advanced AI assistant providing strictly context-based answers" in prompt and 
+              "**Inputs**:" in prompt and 
+              "- **Context**:" in prompt and 
+              "- **User Query**:" in prompt): # Note: {user_query} will be filled
             llm_call_log.append("rag_summarizer_triggered")
+            return expected_rag_summary_content
+        # Check for the CI dummy RAG prompt structure (from ci.yml)
+        # Dummy prompt: "CI RAG Prompt: Context {context_str} Query {user_query}"
+        # After formatting, {context_str} and {user_query} are replaced.
+        elif "CI RAG Prompt: Context " in prompt and user_query in prompt:
+            llm_call_log.append("rag_summarizer_triggered") # CI dummy prompt matched
             return expected_rag_summary_content
         
         # --- RESPONSE SYNTHESIZER ---
-        # Assumes response_node uses intermediate_response (RAG summary) directly
-        # If it reformats, this condition needs to match that prompt.
-        # For this test, we primarily check if it's *not* called for the standard formatting prompt
-        # if the Option A (direct use of RAG summary) is correct.
-        elif ("CI Response Prompt:" in prompt and "{information}" in prompt) or \
-             ("friendly and professional AI customer support assistant" in prompt and "Information Found by the System:" in prompt):
-            llm_call_log.append("response_synthesizer_triggered_for_formatting") # Specific name
-            return f"Formatted final answer for retrieval query: {user_query}"
+        # Check for real prompt structure (from prompts/response/v1_0_format.txt)
+        elif ("friendly and professional AI customer support assistant" in prompt and 
+              "Information Found by the System:" in prompt):
+            llm_call_log.append("response_synthesizer_triggered_for_formatting")
+            # This branch implies response_node is re-formatting the RAG summary.
+            # For Option A (direct use of RAG summary), this shouldn't be hit for RAG success.
+            return f"Mocked final formatted answer for: {user_query}"
+        # Check for CI dummy response prompt structure
+        elif "CI Response Prompt:" in prompt and user_query in prompt: # {information} would be replaced
+            llm_call_log.append("response_synthesizer_triggered_for_formatting") # CI dummy prompt matched
+            return f"Mocked CI final formatted answer for: {user_query}"
             
-        llm_call_log.append(f"fallback_triggered_retrieval: {prompt[:100]}")
+        llm_call_log.append(f"fallback_triggered_retrieval: {prompt[:150]}")
         return "Fallback: UNMATCHED PROMPT in Retrieval mock_llm_router"
 
     mocker.patch('agents.intent_parser_node.get_llm_response', side_effect=mock_llm_router_retrieval)
@@ -89,30 +116,36 @@ def test_retrieval_pipeline_from_json_with_latency_check(golden_query_data, lang
     
     final_state = langgraph_app.invoke(current_initial_state)
 
+    # --- Assertions ---
     retrieved_contexts = final_state.get("retrieved_contexts")
-    assert "intent_parser_triggered" in llm_call_log, f"Intent parser mock not triggered. Query: '{user_query}'. Log: {llm_call_log}. State: {final_state}"
+    assert "intent_parser_triggered" in llm_call_log, \
+        f"Intent parser LLM mock not triggered. Query: '{user_query}'. LLM Log: {llm_call_log}. Final State: {final_state}"
     
     mocked_intent = final_state.get("intent")
-    retrieval_related_intents = ["RETURN_INFO", "SHIPPING_INFO", "PROBLEM_REPORT"]
+    retrieval_related_intents = ["RETURN_INFO", "SHIPPING_INFO", "PROBLEM_REPORT"] # Ensure these match what your mock intent parser returns
 
     if mocked_intent in retrieval_related_intents:
-        assert retrieved_contexts and len(retrieved_contexts) > 0, f"No contexts retrieved. Query: '{user_query}'. Log: {llm_call_log}"
-        assert retrieved_contexts[0]["text"] == mock_retrieved_text_content
+        assert retrieved_contexts and len(retrieved_contexts) > 0, \
+            f"No contexts retrieved. Query: '{user_query}'. LLM Log: {llm_call_log}"
+        assert retrieved_contexts[0]["text"] == mock_retrieved_text_content, \
+            "Mocked retrieved text content mismatch"
         is_source_correct, _, actual_top_source = compare_retrieval_sources(retrieved_contexts, expected_source_filename)
-        assert is_source_correct, f"Source mismatch. Expected: '{expected_source_filename}', Got: '{actual_top_source}'. Query: '{user_query}'"
+        assert is_source_correct, \
+            f"Source mismatch. Expected: '{expected_source_filename}', Got: '{actual_top_source}'. Query: '{user_query}'"
         
-        assert "rag_summarizer_triggered" in llm_call_log, f"RAG summarizer mock not triggered. Query: '{user_query}'. Log: {llm_call_log}"
+        assert "rag_summarizer_triggered" in llm_call_log, \
+            f"RAG summarizer LLM mock not triggered. Query: '{user_query}'. LLM Log: {llm_call_log}"
         
         # Assuming response_node uses intermediate_response (RAG summary) directly (Option A)
+        # This means the `response_synthesizer_triggered_for_formatting` branch of the mock should NOT be hit.
         assert final_state.get("final_answer") == expected_rag_summary_content, \
             f"Final answer mismatch. Expected RAG summary: '{expected_rag_summary_content}', Got: '{final_state.get('final_answer')}'"
         
-        # If response_node uses intermediate_response directly, its LLM for formatting shouldn't be called.
         assert "response_synthesizer_triggered_for_formatting" not in llm_call_log, \
-             f"Response synthesizer LLM (formatting) should NOT have been called if intermediate_response from RAG was used. Log: {llm_call_log}"
+             f"Response synthesizer LLM (for formatting) should NOT have been called if intermediate_response from RAG was used directly. Log: {llm_call_log}"
         
         assert final_state.get("error_message") is None, \
-            f"Pipeline error for '{user_query}' with intent '{mocked_intent}': {final_state.get('error_message')}. Log: {llm_call_log}"
+            f"Pipeline error for '{user_query}' with intent '{mocked_intent}': {final_state.get('error_message')}. LLM Log: {llm_call_log}"
 
     node_latencies = final_state.get("node_latencies")
     node_execution_order = final_state.get("node_execution_order")
