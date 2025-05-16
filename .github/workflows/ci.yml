@@ -148,7 +148,7 @@ jobs:
 
         - name: Simulate Local Flask Run
           env:
-            CI: true
+            OPENAI_API_KEY: dummy-for-ci
           run: |
             echo "Simulating Flask deployment..."
             python -c "from app import app; print('Flask app loaded:', app.name)"
