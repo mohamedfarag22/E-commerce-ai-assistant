@@ -1,0 +1,90 @@
+name: Python CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ] # Or your main development branches
+  pull_request:
+    branches: [ main ] # Or branches you make PRs against
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Lint with Flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=12 --max-line-length=119 --statistics
+
+    - name: Create Dummy Data Files for CI Tests
+      # This step ensures that if any part of your application tries to read these
+      # files upon import (before mocks can be fully set up by pytest for specific tests),
+      # the CI run doesn't fail due to FileNotFoundError.
+      # Your mocks should ideally prevent actual use of these files during tests.
+      # Your pytest.ini with python_paths = . should handle imports.
+      run: |
+        echo "Creating dummy files and directories for CI..."
+        mkdir -p data/doc_index
+        echo '[]' > data/doc_index/doc_metadata_v1_tes.json
+        touch data/doc_index/doc_index_v1_tes.faiss
+
+        mkdir -p data/documents
+        echo "Return Policy Content" > data/documents/return_policy.txt
+        echo "Shipping FAQ Content" > data/documents/shipping_faq.txt
+        echo "Terms Content" > data/documents/terms_conditions.txt
+        
+        # Crucial: Ensure your golden query JSON files exist for tests to load
+        echo '[{"query": "dummy sql query", "expected_sql": "SELECT 1;", "expected_result": "[{\"1\": 1}]"}]' > data/golden_queries_sql.json
+        echo '[{"query": "dummy retrieval query", "expected_answer_source": "dummy_source.txt"}]' > data/golden_queries_retrieval.json
+        
+        # Dummy DB file (tests should use in-memory or mock connections for unit tests)
+        # For integration tests, the actual db in data/ might be used if not mocked.
+        # If data/ecommerce_support.db is committed and needed, this 'touch' is just a fallback.
+        touch data/ecommerce_support.db
+
+        mkdir -p prompts/intent prompts/sql prompts/retrieval prompts/meta prompts/response
+        echo "Intent Prompt Template" > prompts/intent/v1_0_parser.txt
+        echo "SQL Prompt Template with {db_schema} and {user_query}" > prompts/sql/v1_0_schema.txt
+        echo "RAG Prompt Template with {context_str} and {user_query}" > prompts/retrieval/v1_0_rag.txt
+        echo "Meta Prompt Template" > prompts/meta/v1_0_responder.txt
+        echo "Response Prompt Template with {information} and {user_query}" > prompts/response/v1_0_format.txt
+        
+        # Minimal agent_registry.yaml if nodes try to load it before get_node_config mock
+        # Your tests should mock get_node_config to provide specific configs.
+        echo "active_node_versions: {}" > agent_registry.yaml
+        echo "nodes: {}" >> agent_registry.yaml
+
+
+    - name: Run Pytest (Unit and Mocked Integration Tests)
+      run: |
+        pytest -v --cov=. --cov-report=xml
+      env:
+        OPENAI_API_KEY: "DUMMY_CI_KEY_FOR_PYTEST_WORKFLOW"
+        # PYTHONPATH: "." # Not strictly needed if pytest.ini python_paths = . works
+
+    - name: Upload coverage to Codecov
+      if: success()
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }} # Optional
+        files: ./coverage.xml
+        fail_ci_if_error: false 
+        verbose: true
