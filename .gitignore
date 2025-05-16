@@ -5,7 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
-
+.env
 # Distribution / packaging
 .Python
 build/
@@ -79,8 +79,8 @@ env/
 ENV/
 .ENV/
 # If you have a .env file for secrets, ensure it's listed here IF you don't want to commit a template
-.env # Add this if your .env contains actual secrets. 
-     # It's better to commit a .env.example and have users create their own .env
+.env
+     
 
 # Operating System Files
 .DS_Store
