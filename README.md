@@ -57,7 +57,7 @@ ecommerce_ai_assistant/
 
 ## Flow graph Agents
 
-![Flow Graph Agents](https://github.com/mohamedfarag22/ecommerce-ai-assistant/main/Graph_flow_Agents.png)
+![Flow Graph Agents](https://github.com/mohamedfarag22/E-commerce-ai-assistant/row/main/Graph_Flow_Agents.png)
 
 ## Setup
 
