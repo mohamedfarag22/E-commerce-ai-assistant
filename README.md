@@ -57,7 +57,7 @@ ecommerce_ai_assistant/
 
 ## Flow graph Agents
 
-![Flow Graph Agents](https://github.com/mohamedfarag22/ecommerce-ai-assistant/raw/main/Graph_flow_Agents.png)
+![Flow Graph Agents](https://github.com/mohamedfarag22/ecommerce-ai-assistant/main/Graph_flow_Agents.png)
 
 ## Setup
 
@@ -138,7 +138,7 @@ This script uses eval_config.yaml and your golden JSON query files (data/golden_
 
 # LangGraph Agent Benchmarking Tool
 ```
-pytho
+python benchmark_runner.py
 ```
 This tool evaluates the performance of a LangGraph agent by running it against a benchmark dataset of queries and comparing the actual responses with expected results using GPT-4o for semantic evaluation.
 
@@ -158,7 +158,7 @@ This tool evaluates the performance of a LangGraph agent by running it against a
   - Your custom LangGraph app (`app_graph`)
   - Your custom state definition (`graph_state`)
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack of all project
 
 - Python 3.9+
 - langchain
